@@ -2,21 +2,26 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class Transaction {
+    //Fields
     String transactionID;
     String transactionDate;
     double amount;
     TransactionType type;
+    LocalDateTime createdAt;
+
     static int counter = 0;
     static String curDate = "";
 
+    //Constructor
     public Transaction(String transactionDate, double amount, TransactionType type){
         if (type == null){
             throw new IllegalArgumentException("Transaction type cannot be null!");
         }
         this.transactionID = generateTransactionId();
-        this.transactionDate = (transactionDate != null) ? transactionDate : LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+        this.transactionDate = transactionDate;
         this.amount = amount;
         this.type = type;
+        this.createdAt = LocalDateTime.now();
     }
 
     private String generateTransactionId(){
@@ -35,8 +40,8 @@ public class Transaction {
     @Override
     public String toString(){
         return String.format(
-            "Transaction ID: %s, Amount: $%.2f, Date: %s, Type: %s",
-            transactionID, amount, transactionDate, type 
+            "Transaction ID: %s,\n Amount: $%.2f,\n Sale Date: %s,\n Entered in System: %s,\n Type: %s\n",
+            transactionID, amount, transactionDate, createdAt.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")),type 
         );
     }
 }
