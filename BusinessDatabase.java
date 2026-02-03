@@ -8,33 +8,51 @@ public class BusinessDatabase {
     int transactionCount;
     
     BusinessDatabase() {
-        customers = new Customer[100];
-        products = new Product[100];
-        transactions = new Transaction[100];
+        customers = new Customer[10];
+        products = new Product[10];
+        transactions = new Transaction[10];
         customerCount = 0;
         productCount = 0;
         transactionCount = 0;
     }
     
     void addCustomer(Customer customer) {
-        if (customerCount < customers.length) {
-            customers[customerCount] = customer;
-            customerCount++;
-        }
+        if (customerCount >= customers.length) {
+            Customer[] newArr = new Customer[customerCount * 2];
+            // Copy the old data to the new array
+            for (int i = 0; i < customers.length; i++){
+                newArr[i] = customers[i];
+            }
+            customers = newArr; // Replace the old array with the new one
+        } 
+        customers[customerCount] = customer;
+        customerCount++;
     }
     
     void addProduct(Product product) {
-        if (productCount < products.length) {
-            products[productCount] = product;
-            productCount++;
+        if (productCount >= products.length) {
+            Product[] newArr = new Product[productCount * 2];
+            // Copy the old data to the new array
+            for (int i = 0; i < products.length; i++){
+                newArr[i] = products[i];
+            }
+            products = newArr; // Replace the old array with the new one
         }
+        products[productCount] = product;
+        productCount++;
     }
     
     void addTransaction(Transaction transaction) {
-        if (transactionCount < transactions.length) {
-            transactions[transactionCount] = transaction;
-            transactionCount++;
+        if (transactionCount >= transactions.length) {
+            Transaction[] newArr = new Transaction[transactionCount * 2];
+            // Copy the old data to the new array
+            for (int i = 0; i < transactions.length; i++){
+                newArr[i] = transactions[i];
+            }
+            transactions = newArr; // Replace the old array with the new one
         }
+        transactions[transactionCount] = transaction;
+        transactionCount++;
     }
     
     // Search method with null safety

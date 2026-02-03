@@ -2,16 +2,16 @@ public class Product {
     String id;
     String name;
     String unit;
-    double standardPrice;
+    double price;
     
-    Product(String id, String name, String unit, double standardPrice) {
+    Product(String id, String name, String unit, double price) {
         this.id = id;
         this.name = name;
         this.unit = unit;
-        this.standardPrice = standardPrice;
+        this.price = price;
     }
     
     void printDetails() {
-        System.out.println(name + " - $" + standardPrice + " per " + unit);
+        System.out.println(name + " - $" + price + " per " + unit);
     }
 }

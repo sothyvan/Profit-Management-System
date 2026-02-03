@@ -30,7 +30,7 @@ public class Transaction {
         this.snapshotTaken = false;
     }
     
-    // Method to take snapshot (call this after transaction is complete)
+    // Method to take snapshot
     void takeSnapshot() {
         this.snapshotRevenue = this.revenue;           
         this.snapshotProfit = this.calculateProfit();    
@@ -38,31 +38,21 @@ public class Transaction {
         this.snapshotTaken = true;
     }
     
-    // Method to show snapshot
-    void printSnapshot() {
-        if (snapshotTaken) {
-            System.out.println("=== Transaction Snapshot (Frozen Values) ===");
-            System.out.println("Snapshot Revenue: $" + snapshotRevenue);
-            System.out.println("Snapshot Profit: $" + snapshotProfit);
-            System.out.println("Snapshot Margin: " + snapshotMargin + "%");
-            System.out.println();
-            System.out.println("Current Revenue: $" + revenue);
-            System.out.println("Current Profit: $" + calculateProfit());
-            System.out.println("Current Margin: " + calculateMargin() + "%");
-        } else {
-            System.out.println("No snapshot taken yet.");
-        }
-    }
-    
     void addCost(Cost cost) {
-        if (costCount < costs.length) {
-            costs[costCount] = cost;
-            costCount++;
+        if (costCount >= costs.length) {
+            Cost[] newArr = new Cost[costCount * 2];
+            // Copy the old data to the new array
+            for (int i = 0; i < costs.length; i++){
+                newArr[i] = costs[i];
+            }
+            costs = newArr;
         }
+        costs[costCount] = cost;
+        costCount++;
     }
 
     double calculateRevenue(double quantity, double unitPrice){
-        return quantity*unitPrice;
+        return quantity * unitPrice;
     }
     
     double calculateTotalCost() {
@@ -82,6 +72,7 @@ public class Transaction {
         return (calculateProfit() / revenue) * 100;
     }
     
+    // Method to print out the Transaction
     void printDetails() {
         System.out.println("Transaction: " + id + " - " + date);
         System.out.println("Customer: " + customer.name);
@@ -100,5 +91,21 @@ public class Transaction {
         System.out.println("Total Cost: $" + calculateTotalCost());
         System.out.println("Profit: $" + calculateProfit());
         System.out.println("Margin: " + calculateMargin() + "%");
+    }
+    
+    // Method to show snapshot
+    void printSnapshot() {
+        if (snapshotTaken) {
+            System.out.println("=== Transaction Snapshot (Frozen Values) ===");
+            System.out.println("Snapshot Revenue: $" + snapshotRevenue);
+            System.out.println("Snapshot Profit: $" + snapshotProfit);
+            System.out.println("Snapshot Margin: " + snapshotMargin + "%");
+            System.out.println();
+            System.out.println("Current Revenue: $" + revenue);
+            System.out.println("Current Profit: $" + calculateProfit());
+            System.out.println("Current Margin: " + calculateMargin() + "%");
+        } else {
+            System.out.println("No snapshot taken yet.");
+        }
     }
 }

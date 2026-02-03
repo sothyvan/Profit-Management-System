@@ -3,10 +3,10 @@ public class ProfitManagementSystem {
         //F1: Primitive copy
         System.out.println("F1 — PRIMITIVE COPY DEMONSTRATION:");
         double originalPrice = 100.0;
-        double priceCopy = originalPrice;
-        priceCopy += 50.0;
+        double copy = originalPrice;
+        copy += 50.0;
         System.out.println("Original price: $" + originalPrice);
-        System.out.println("Modified copy: $" + priceCopy);
+        System.out.println("Modified copy: $" + copy);
         System.out.println("Original unchanged: " + (originalPrice == 100.0));
         System.out.println();
         
@@ -52,7 +52,7 @@ public class ProfitManagementSystem {
         System.out.println("   Profit: $" + transaction.calculateProfit());
         System.out.println("   Margin: " + transaction.calculateMargin() + "%");
         
-        // TAKE SNAPSHOT (freeze the current values)
+        // TAKE SNAPSHOT 
         transaction.takeSnapshot();
         
         System.out.println("\n2. Snapshot taken (values frozen)");
@@ -72,15 +72,14 @@ public class ProfitManagementSystem {
         transaction.printSnapshot();
         
         System.out.println("\nPROOF: Snapshot values remained unchanged!");
-        System.out.println("   Even though current revenue changed from $" + 
-            transaction.snapshotRevenue + " to $" + transaction.revenue);
+        System.out.println("   Even though current revenue changed from $" + transaction.snapshotRevenue + " to $" + transaction.revenue);
     }
     
     static void createSampleData(BusinessDatabase db) {
-        // Create customers (simplified)
+        // Create customers
         Customer cust1 = new Customer("CUST-001", "FreshMart");
         Customer cust2 = new Customer("CUST-002", "Local Store");
-        Customer cust3 = new Customer("CUST-003", "TechCorp");
+        Customer cust3 = new Customer("CUST-003", "Tech Store");
         
         db.addCustomer(cust1);
         db.addCustomer(cust2);
@@ -88,7 +87,7 @@ public class ProfitManagementSystem {
         
         // Create products/services
         Product prod1 = new Product("PROD-001", "Apples", "kg", 3.5);
-        Product prod2 = new Product("PROD-002", "Consulting", "hour", 150);
+        Product prod2 = new Product("PROD-002", "Shoes", "item", 150);
         Product prod3 = new Product("PROD-003", "Software", "license", 50);
         
         db.addProduct(prod1);
