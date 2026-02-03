@@ -1,7 +1,7 @@
 public class ProfitManagementSystem {
     public static void main(String[] args) {
         //F1: Primitive copy
-        System.out.println("F1 — PRIMITIVE COPY DEMONSTRATION:");
+        System.out.println("F1: PRIMITIVE COPY DEMONSTRATION:");
         double originalPrice = 100.0;
         double copy = originalPrice;
         copy += 50.0;
@@ -11,7 +11,7 @@ public class ProfitManagementSystem {
         System.out.println();
         
         //F2: Reference copy
-        System.out.println("F2 — REFERENCE COPY DEMONSTRATION:");
+        System.out.println("F2: REFERENCE COPY DEMONSTRATION:");
         Customer customer = new Customer("CUST-001", "FreshMart");
         Customer customerReference = customer;
         
@@ -28,7 +28,7 @@ public class ProfitManagementSystem {
         createSampleData(db);
         
         //F3: Array stores references
-        System.out.println("F3 — ARRAY STORES REFERENCES DEMONSTRATION:");
+        System.out.println("F3: ARRAY STORES REFERENCES DEMONSTRATION:");
         System.out.println("Before modification:");
         db.customers[0].printDetails();
         
@@ -41,7 +41,7 @@ public class ProfitManagementSystem {
         System.out.println();
         
         //F4: Snapshot behavior
-        System.out.println("F4 — SNAPSHOT BEHAVIOR DEMONSTRATION:");
+        System.out.println("F4: SNAPSHOT BEHAVIOR DEMONSTRATION:");
         
         // Create a transaction
         Transaction transaction = new Transaction("TX-100", "2024-01-15", db.customers[0], db.products[0], 100, 4.0);
@@ -55,7 +55,7 @@ public class ProfitManagementSystem {
         // TAKE SNAPSHOT 
         transaction.takeSnapshot();
         
-        System.out.println("\n2. Snapshot taken (values frozen)");
+        System.out.println("\n2. Snapshot taken");
         
         // MODIFY THE ORIGINAL TRANSACTION
         transaction.unitPrice = 5.0;      // Change price
@@ -68,11 +68,8 @@ public class ProfitManagementSystem {
         System.out.println("   New Profit: $" + transaction.calculateProfit());
         System.out.println("   New Margin: " + transaction.calculateMargin() + "%");
         
-        System.out.println("\n4. Snapshot (frozen values) vs Current (modified values):");
+        System.out.println("\n4. Snapshot vs Current:");
         transaction.printSnapshot();
-        
-        System.out.println("\nPROOF: Snapshot values remained unchanged!");
-        System.out.println("   Even though current revenue changed from $" + transaction.snapshotRevenue + " to $" + transaction.revenue);
     }
     
     static void createSampleData(BusinessDatabase db) {

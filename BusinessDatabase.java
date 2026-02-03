@@ -24,7 +24,7 @@ public class BusinessDatabase {
                 newArr[i] = customers[i];
             }
             customers = newArr; // Replace the old array with the new one
-        } 
+        }
         customers[customerCount] = customer;
         customerCount++;
     }

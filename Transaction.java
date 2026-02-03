@@ -5,8 +5,7 @@ public class Transaction {
     Product product;
     double quantity;
     double unitPrice;
-    
-    // REGULAR FIELDS
+
     double revenue;
     Cost[] costs;
     int costCount;
@@ -96,7 +95,7 @@ public class Transaction {
     // Method to show snapshot
     void printSnapshot() {
         if (snapshotTaken) {
-            System.out.println("=== Transaction Snapshot (Frozen Values) ===");
+            System.out.println("=== Transaction Snapshot ===");
             System.out.println("Snapshot Revenue: $" + snapshotRevenue);
             System.out.println("Snapshot Profit: $" + snapshotProfit);
             System.out.println("Snapshot Margin: " + snapshotMargin + "%");
