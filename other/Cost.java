@@ -1,33 +1,29 @@
+package other;
+
 public class Cost {        
+    private static int nextId = 1;  
+
+    private String id;
     private double amount;
+    private String description;
     private Product product;        
     private Transaction transaction;
-    private static int nextId = 1;  
-    private String id;
     
     // Constructor for Product-related costs
     public Cost(double amount, Product product) {
-        this.id = "COST-" + nextId;
-        nextId++;
-        this.amount = amount;
-        this.product = product;
-        this.transaction = null;  // Not linked to transaction yet
+        this(amount, "Product Cost", product, null);
     }
     
     // Constructor for Transaction-related costs
     public Cost(double amount, Transaction transaction) {
-        this.id = "COST-" + nextId;
-        nextId++;
-        this.amount = amount;
-        this.transaction = transaction;
-        this.product = null;  // Not linked to product
+        this(amount, "Transaction Cost", null, transaction);
     }
-    
-    // Constructor for costs linked to both
-    public Cost(double amount, Product product, Transaction transaction) {
+
+    public Cost(double amount, String description, Product product, Transaction transaction) {
         this.id = "COST-" + nextId;
         nextId++;
-        this.amount = amount;
+        setAmount(amount);
+        setDescription(description);
         this.product = product;
         this.transaction = transaction;
     }
@@ -40,6 +36,10 @@ public class Cost {
     public double getAmount() {
         return amount;
     }
+
+    public String getDescription() {
+        return description;
+    }
     
     public Product getProduct() {
         return product;
@@ -49,7 +49,7 @@ public class Cost {
         return transaction;
     }
     
-    // SETTER with validation (Week 4 requirement)
+    // SETTER
     public void setAmount(double amount) {
         if (amount >= 0) {
             this.amount = amount;
@@ -57,13 +57,19 @@ public class Cost {
             System.out.println("Error: Cost amount cannot be negative");
         }
     }
+
+    public void setDescription(String description) {
+        if (description == null || description.trim().isEmpty()) {
+            this.description = "General Cost";
+        } else {
+            this.description = description.trim();
+        }
+    }
     
-    // Setter to link to a product
     public void setProduct(Product product) {
         this.product = product;
     }
     
-    // Setter to link to a transaction
     public void setTransaction(Transaction transaction) {
         this.transaction = transaction;
     }
@@ -77,18 +83,6 @@ public class Cost {
         if (getClass() != obj.getClass())
             return false;
         Cost other = (Cost) obj;
-        if (Double.doubleToLongBits(amount) != Double.doubleToLongBits(other.amount))
-            return false;
-        if (product == null) {
-            if (other.product != null)
-                return false;
-        } else if (!product.equals(other.product))
-            return false;
-        if (transaction == null) {
-            if (other.transaction != null)
-                return false;
-        } else if (!transaction.equals(other.transaction))
-            return false;
         if (id == null) {
             if (other.id != null)
                 return false;
@@ -97,24 +91,14 @@ public class Cost {
         return true;
     }
     
-    // toString() showing connections
     @Override
     public String toString() {        
-        String productInfo = (product != null) ? product.getName() : "No Product";
+        String productInfo = (product != null) ? product.getId() : "No Product";
         String transactionInfo = (transaction != null) ? transaction.getId() : "No Transaction";
         return "Cost [id = " + id + 
                 ", amount = $" + amount + 
+                ", description = " + description +
                 ", product = " + productInfo + 
                 ", transaction = " + transactionInfo + "]";
         }
-    
-    // Helper method to check if cost is product-related
-    public boolean isProductCost() {
-        return product != null;
-    }
-    
-    // Helper method to check if cost is transaction-related
-    public boolean isTransactionCost() {
-        return transaction != null;
-    }
 }

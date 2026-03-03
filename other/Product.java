@@ -1,4 +1,7 @@
+package other;
 public class Product {
+    public static final String DEFAULT_UNIT = "case";
+
     private String id;       
     private String name;
     private String unit;
@@ -11,12 +14,12 @@ public class Product {
         this.id = "PROD-" + nextId;
         nextId++;
         this.name = name;
-        this.unit = unit;
+        this.unit = DEFAULT_UNIT;
         this.price = price;
         this.productionCosts = new Cost(0.0, this);
     }
     
-    // GETTERS (all fields private)
+    // GETTERS
     public String getId() {
         return id;
     }
@@ -37,7 +40,7 @@ public class Product {
         return (productionCosts != null) ? productionCosts.getAmount() : 0;
     }
     
-    // SETTERS with validation (Week 4 requirement)
+    // SETTERS
     public void setName(String name) {
         if (name != null) {
             this.name = name;
@@ -55,11 +58,7 @@ public class Product {
     }
     
     public void setUnit(String unit) {
-        if (unit != null) {
-            this.unit = unit;
-        } else {
-            System.out.println("Error: Product unit cannot be empty");
-        }
+        this.unit = DEFAULT_UNIT;
     }
     
     public void setProductionCost(double amount) {
@@ -70,7 +69,6 @@ public class Product {
         }
     }
 
-    // equals() method that compares based on ID
     @Override
     public boolean equals(Object obj) {
         if (this == obj)
@@ -84,23 +82,6 @@ public class Product {
             if (other.id != null)
                 return false;
         } else if (!id.equals(other.id))
-            return false;
-        if (name == null) {
-            if (other.name != null)
-                return false;
-        } else if (!name.equals(other.name))
-            return false;
-        if (unit == null) {
-            if (other.unit != null)
-                return false;
-        } else if (!unit.equals(other.unit))
-            return false;
-        if (Double.doubleToLongBits(price) != Double.doubleToLongBits(other.price))
-            return false;
-        if (productionCosts == null) {
-            if (other.productionCosts != null)
-                return false;
-        } else if (!productionCosts.equals(other.productionCosts))
             return false;
         return true;
     }
