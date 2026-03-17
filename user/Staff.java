@@ -4,10 +4,10 @@ package user;
 public abstract class Staff implements IStaff {
     private static int nextId = 1;
 
-    private String staffId;
+    private final String staffId;
     private String fullName;
     private String phone;
-    private String username;
+    private final String username;
     private String password;
     private boolean active;
     protected double salary;
@@ -21,7 +21,7 @@ public abstract class Staff implements IStaff {
         nextId++;
         setFullName(fullName);
         setPhone(phone);
-        setUsername(username);
+        this.username = normalizeUsername(username, staffId);
         setPassword(password);
         this.active = true;
     }
@@ -32,14 +32,14 @@ public abstract class Staff implements IStaff {
             nextId++;
             setFullName(null);
             setPhone(null);
-            setUsername(null);
+            this.username = normalizeUsername(null, staffId);
             setPassword(null);
             this.active = true;
         } else {
             this.staffId = source.getStaffId();
             setFullName(source.getFullName());
             setPhone(source.getPhone());
-            setUsername(source.getUsername());
+            this.username = normalizeUsername(source.getUsername(), staffId);
             setPassword(source.password);
             this.active = source.isActive();
             this.salary = source.getSalary();
@@ -93,14 +93,6 @@ public abstract class Staff implements IStaff {
         }
     }
 
-    public void setUsername(String username) {
-        if (isBlank(username)) {
-            this.username = "staff_" + staffId;
-        } else {
-            this.username = username.trim();
-        }
-    }
-
     public void setPassword(String password) {
         String pw = (password == null) ? "" : password;
         if (pw.length() < 4) {
@@ -131,6 +123,13 @@ public abstract class Staff implements IStaff {
             if (c < '0' || c > '9') return false;
         }
         return true;
+    }
+
+    private String normalizeUsername(String username, String staffId) {
+        if (isBlank(username)) {
+            return "staff_" + staffId;
+        }
+        return username.trim();
     }
 
     @Override

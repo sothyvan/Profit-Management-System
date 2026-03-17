@@ -18,7 +18,6 @@ public class MainSystem {
     private static final Scanner scanner = new Scanner(System.in);
     private static final ProfitManagement business = new ProfitManagement();
     private static Staff loggedInUser = null;
-    // Lambda used instead of an anonymous inner class to implement this functional interface.
     private static final ReportFormatter MONEY_FORMATTER =
             value -> String.format("$%,.2f", value);
     private static final ReportFormatter PERCENT_FORMATTER =
