@@ -1,18 +1,28 @@
 package controller;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Scanner;
 
 import other.Cost;
 import other.Customer;
 import other.Product;
 import other.Transaction;
-import user.IStaff;
+import user.Staff;
 
 public class MainSystem {
     private static final Scanner scanner = new Scanner(System.in);
     private static final ProfitManagement business = new ProfitManagement();
-    private static IStaff loggedInUser = null;
+    private static Staff loggedInUser = null;
+    // Lambda used instead of an anonymous inner class to implement this functional interface.
+    private static final ReportFormatter MONEY_FORMATTER =
+            value -> String.format("$%,.2f", value);
+    private static final ReportFormatter PERCENT_FORMATTER =
+            value -> String.format("%,.2f%%", value);
 
     public static void main(String[] args) {
         initializeSystem();
@@ -36,22 +46,28 @@ public class MainSystem {
                     viewTransactions();
                     break;
                 case 3:
-                    createProduct();
+                    editTransaction();
                     break;
                 case 4:
-                    viewProducts();
+                    createProduct();
                     break;
                 case 5:
-                    viewReport();
+                    viewProducts();
                     break;
                 case 6:
-                    manageUsers();
+                    addCustomer();
                     break;
                 case 7:
+                    viewReport();
+                    break;
+                case 8:
+                    manageUsers();
+                    break;
+                case 9:
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid choice! Please enter 1-7.");
+                    System.out.println("Invalid choice! Please enter 1-9.");
             }
         }
     }
@@ -59,6 +75,15 @@ public class MainSystem {
     private static void initializeSystem() {
         business.loadDefaultUsers();
         business.loadSampleData();
+    }
+
+    private static String getStaffPosition(Staff staff) {
+        if (staff instanceof user.ManagerStaff) {
+            return "Manager";
+        } else if (staff instanceof user.CashierStaff) {
+            return "Cashier";
+        }
+        return "Unknown";
     }
 
     private static boolean login() {
@@ -72,10 +97,10 @@ public class MainSystem {
             System.out.print("Password: ");
             String password = scanner.nextLine();
 
-            IStaff authenticated = business.authenticate(username, password);
+            Staff authenticated = business.authenticate(username, password);
             if (authenticated != null) {
                 loggedInUser = authenticated;
-                System.out.println("\nLogin successful! Welcome, " + loggedInUser.getPosition() + " " + loggedInUser.getUsername());
+                System.out.println("\nLogin successful! Welcome, " + getStaffPosition(loggedInUser) + " " + loggedInUser.getUsername());
                 return true;
             }
 
@@ -88,19 +113,21 @@ public class MainSystem {
 
     private static void printMenu() {
         System.out.println("\n=== MAIN MENU ===");
-        System.out.println("Logged in as: " + loggedInUser.getPosition() + " (" + loggedInUser.getUsername() + ")");
+        System.out.println("Logged in as: " + getStaffPosition(loggedInUser) + " (" + loggedInUser.getUsername() + ")");
         System.out.println("1. Create Transaction");
         System.out.println("2. View Transactions");
-        System.out.println("3. Create Product");
-        System.out.println("4. View Products");
-        System.out.println("5. View Report");
-        System.out.println("6. Manage Users");
-        System.out.println("7. Logout");
+        System.out.println("3. Edit Transaction");
+        System.out.println("4. Create Product");
+        System.out.println("5. View Products");
+        System.out.println("6. Add Customer");
+        System.out.println("7. View Report");
+        System.out.println("8. Manage Users");
+        System.out.println("9. Logout");
     }
 
     private static void createTransaction() {
         if (!loggedInUser.can("CREATE_TRANSACTION")) {
-            System.out.println("Sorry, " + loggedInUser.getPosition() + " cannot create transactions.");
+            System.out.println("Sorry, " + getStaffPosition(loggedInUser) + " cannot create transactions.");
             waitForEnter();
             return;
         }
@@ -117,15 +144,20 @@ public class MainSystem {
             System.out.println("  " + customer.getId() + " - " + customer.getName());
         }
 
-        System.out.print("\nEnter customer ID: ");
+        System.out.print("\nEnter customer ID (or 0 to go back): ");
         String customerId = scanner.nextLine();
+        if ("0".equals(customerId)) {
+            return;
+        }
         if (business.findCustomerById(customerId) == null) {
             System.out.println("Customer not found!");
             return;
         }
 
-        System.out.print("Enter date (YYYY-MM-DD): ");
-        String date = scanner.nextLine();
+        String date = promptDate("Enter date (YYYY-MM-DD) (or 0 to go back): ");
+        if (date == null) {
+            return;
+        }
 
         Transaction transaction = business.createTransaction(date, customerId, loggedInUser);
         if (transaction == null) {
@@ -178,7 +210,10 @@ public class MainSystem {
             System.out.print("Add additional cost for this product? (y/n): ");
             String addCost = scanner.nextLine();
             if (addCost.equalsIgnoreCase("y")) {
-                double amount = getPositiveDoubleInput("Enter cost amount: $");
+                double amount = getNonNegativeDoubleInput("Enter cost amount (or 0 to cancel): $");
+                if (amount == 0) {
+                    continue;
+                }
                 System.out.print("Enter cost description: ");
                 String description = scanner.nextLine();
                 Cost cost = business.addTransactionCost(transactionId, amount, description, productId);
@@ -193,7 +228,7 @@ public class MainSystem {
 
     private static void viewTransactions() {
         if (!loggedInUser.can("VIEW_TRANSACTIONS")) {
-            System.out.println("Sorry, " + loggedInUser.getPosition() + " cannot view transactions.");
+            System.out.println("Sorry, " + getStaffPosition(loggedInUser) + " cannot view transactions.");
             waitForEnter();
             return;
         }
@@ -238,6 +273,74 @@ public class MainSystem {
         }
     }
 
+    private static void editTransaction() {
+        if (!loggedInUser.can("EDIT_TRANSACTION")) {
+            System.out.println("Sorry, " + getStaffPosition(loggedInUser) + " cannot edit transactions.");
+            waitForEnter();
+            return;
+        }
+
+        ArrayList<Transaction> transactions = business.getTransactions();
+        if (transactions.isEmpty()) {
+            System.out.println("No transactions found.");
+            waitForEnter();
+            return;
+        }
+
+        System.out.println("\n=== EDIT TRANSACTION ===");
+        System.out.printf("%-4s %-10s %-12s %-16s %-6s%n", "No", "ID", "Date", "Customer", "Items");
+        System.out.println("------------------------------------------------------");
+        for (int i = 0; i < transactions.size(); i++) {
+            Transaction t = transactions.get(i);
+            System.out.printf("%-4d %-10s %-12s %-16s %-6d%n",
+                    i + 1,
+                    t.getId(),
+                    t.getDate(),
+                    t.getCustomer().getName(),
+                    t.getProductCount());
+        }
+
+        System.out.print("\nEnter transaction ID to edit (or 0 to go back): ");
+        String idInput = scanner.nextLine();
+        if ("0".equals(idInput)) {
+            return;
+        }
+
+        Transaction transaction = business.findTransactionById(idInput);
+        if (transaction == null) {
+            System.out.println("Transaction not found.");
+            waitForEnter();
+            return;
+        }
+
+        boolean editing = true;
+        while (editing) {
+            System.out.println("\n--- Edit Transaction " + transaction.getId() + " ---");
+            System.out.println("1. Add Product");
+            System.out.println("2. Add Expense");
+            System.out.println("3. View Details");
+            System.out.println("4. Back");
+
+            int choice = getIntInput("Choose option: ");
+            switch (choice) {
+                case 1:
+                    addProductsToTransaction(transaction.getId());
+                    break;
+                case 2:
+                    addExpenseToTransaction(transaction.getId());
+                    break;
+                case 3:
+                    viewTransactionDetails(transaction);
+                    break;
+                case 4:
+                    editing = false;
+                    break;
+                default:
+                    System.out.println("Invalid option.");
+            }
+        }
+    }
+
     private static void viewTransactionDetails(Transaction transaction) {
         System.out.println("\n========================================");
         System.out.println("TRANSACTION DETAILS");
@@ -247,7 +350,7 @@ public class MainSystem {
         System.out.println("Customer : " + transaction.getCustomer().getName());
         System.out.println("Staff    : " + (transaction.getStaff() == null
                 ? "Unassigned"
-                : transaction.getStaff().getFullName() + " (" + transaction.getStaff().getPosition() + ")"));
+                : transaction.getStaff().getFullName() + " (" + getStaffPosition(transaction.getStaff()) + ")"));
 
         System.out.println("\nProducts");
         System.out.printf("%-4s %-20s %-10s %-8s %-12s %-12s%n",
@@ -324,20 +427,40 @@ public class MainSystem {
         return expenses;
     }
 
+    private static void addExpenseToTransaction(String transactionId) {
+        System.out.println("\n--- Add Expense ---");
+        double amount = getNonNegativeDoubleInput("Enter expense amount (or 0 to go back): $");
+        if (amount == 0) {
+            return;
+        }
+        System.out.print("Enter expense description: ");
+        String description = scanner.nextLine();
+
+        Cost cost = business.addTransactionCost(transactionId, amount, description);
+        if (cost != null) {
+            System.out.println("Expense added: $" + cost.getAmount());
+        } else {
+            System.out.println("Could not add expense.");
+        }
+    }
+
     private static String formatMoney(double amount) {
-        return String.format("$%,.2f", amount);
+        return MONEY_FORMATTER.format(amount);
     }
 
     private static void createProduct() {
         if (!loggedInUser.can("CREATE_PRODUCT")) {
-            System.out.println("Sorry, " + loggedInUser.getPosition() + " cannot create products.");
+            System.out.println("Sorry, " + getStaffPosition(loggedInUser) + " cannot create products.");
             waitForEnter();
             return;
         }
 
         System.out.println("\n=== CREATE PRODUCT ===");
-        System.out.print("Enter product name: ");
+        System.out.print("Enter product name (or 0 to go back): ");
         String name = scanner.nextLine();
+        if ("0".equals(name)) {
+            return;
+        }
         System.out.println("Unit is fixed for wholesale mode: " + Product.DEFAULT_UNIT);
         double price = getPositiveDoubleInput("Enter price: $");
         double productionCost = getNonNegativeDoubleInput("Enter production cost (or 0 if none): $");
@@ -353,7 +476,7 @@ public class MainSystem {
 
     private static void viewProducts() {
         if (!loggedInUser.can("VIEW_PRODUCTS")) {
-            System.out.println("Sorry, " + loggedInUser.getPosition() + " cannot view products.");
+            System.out.println("Sorry, " + getStaffPosition(loggedInUser) + " cannot view products.");
             waitForEnter();
             return;
         }
@@ -365,15 +488,49 @@ public class MainSystem {
             return;
         }
 
+        Collections.sort(products, new Comparator<Product>() {
+            @Override
+            public int compare(Product a, Product b) {
+                return a.getName().compareToIgnoreCase(b.getName());
+            }
+        });
+
         for (int i = 0; i < products.size(); i++) {
             System.out.println((i + 1) + ". " + products.get(i));
         }
         waitForEnter();
     }
 
+    private static void addCustomer() {
+        if (!loggedInUser.can("CREATE_CUSTOMER")) {
+            System.out.println("Sorry, " + getStaffPosition(loggedInUser) + " cannot add customers.");
+            waitForEnter();
+            return;
+        }
+
+        System.out.println("\n=== ADD CUSTOMER ===");
+        System.out.print("First name (or 0 to go back): ");
+        String firstName = scanner.nextLine();
+        if ("0".equals(firstName)) {
+            return;
+        }
+        System.out.print("Last name: ");
+        String lastName = scanner.nextLine();
+        System.out.print("Phone (digits only): ");
+        String phoneNumber = scanner.nextLine();
+
+        Customer customer = business.createCustomer(firstName, lastName, phoneNumber);
+        if (customer == null) {
+            System.out.println("Invalid customer data.");
+            return;
+        }
+
+        System.out.println("Customer created successfully! ID: " + customer.getId());
+    }
+
     private static void viewReport() {
         if (!loggedInUser.can("VIEW_REPORT")) {
-            System.out.println("Sorry, " + loggedInUser.getPosition() + " cannot view reports.");
+            System.out.println("Sorry, " + getStaffPosition(loggedInUser) + " cannot view reports.");
             waitForEnter();
             return;
         }
@@ -381,7 +538,6 @@ public class MainSystem {
         boolean reporting = true;
         while (reporting) {
             System.out.println("\n=== FINANCIAL REPORTS ===");
-            System.out.printf("Tax Rate: %.2f%%%n", Transaction.getTaxRate() * 100);
             System.out.println("1. Daily Report");
             System.out.println("2. Monthly Report");
             System.out.println("3. Yearly Report");
@@ -412,8 +568,10 @@ public class MainSystem {
     }
 
     private static void viewDailyReport() {
-        System.out.print("Enter date (YYYY-MM-DD): ");
-        String date = scanner.nextLine();
+        String date = promptDate("Enter date (YYYY-MM-DD) or 0 to go back: ");
+        if (date == null) {
+            return;
+        }
 
         int count = business.getDailyTransactionCount(date);
         if (count == 0) {
@@ -424,17 +582,19 @@ public class MainSystem {
 
         double revenue = business.getDailyRevenue(date);
         double expenses = business.getDailyExpenses(date);
-        double profitBeforeTax = business.getDailyProfit(date);
-        double profitAfterTax = business.getDailyProfitAfterTax(date);
+        double profit = business.getDailyProfit(date);
         double margin = business.getDailyMargin(date);
 
-        printReportCard("DAILY REPORT", date, count, revenue, expenses, profitBeforeTax, profitAfterTax, margin);
+        printReportCard("DAILY REPORT", date, count, revenue, expenses, profit, margin);
         waitForEnter();
     }
 
     private static void viewMonthlyReport() {
-        System.out.print("Enter month (YYYY-MM): ");
+        System.out.print("Enter month (YYYY-MM) or 0 to go back: ");
         String month = scanner.nextLine();
+        if ("0".equals(month)) {
+            return;
+        }
 
         int count = business.getMonthlyTransactionCount(month);
         if (count == 0) {
@@ -445,17 +605,19 @@ public class MainSystem {
 
         double revenue = business.getMonthlyRevenue(month);
         double expenses = business.getMonthlyExpenses(month);
-        double profitBeforeTax = business.getMonthlyProfit(month);
-        double profitAfterTax = business.getMonthlyProfitAfterTax(month);
+        double profit = business.getMonthlyProfit(month);
         double margin = business.getMonthlyMargin(month);
 
-        printReportCard("MONTHLY REPORT", month, count, revenue, expenses, profitBeforeTax, profitAfterTax, margin);
+        printReportCard("MONTHLY REPORT", month, count, revenue, expenses, profit, margin);
         waitForEnter();
     }
 
     private static void viewYearlyReport() {
-        System.out.print("Enter year (YYYY): ");
+        System.out.print("Enter year (YYYY) or 0 to go back: ");
         String year = scanner.nextLine();
+        if ("0".equals(year)) {
+            return;
+        }
 
         int count = business.getYearlyTransactionCount(year);
         if (count == 0) {
@@ -466,11 +628,10 @@ public class MainSystem {
 
         double revenue = business.getYearlyRevenue(year);
         double expenses = business.getYearlyExpenses(year);
-        double profitBeforeTax = business.getYearlyProfit(year);
-        double profitAfterTax = business.getYearlyProfitAfterTax(year);
+        double profit = business.getYearlyProfit(year);
         double margin = business.getYearlyMargin(year);
 
-        printReportCard("YEARLY REPORT", year, count, revenue, expenses, profitBeforeTax, profitAfterTax, margin);
+        printReportCard("YEARLY REPORT", year, count, revenue, expenses, profit, margin);
         waitForEnter();
     }
 
@@ -484,11 +645,10 @@ public class MainSystem {
 
         double revenue = business.calculateTotalRevenue();
         double expenses = business.calculateTotalExpenses();
-        double profitBeforeTax = business.calculateTotalProfit();
-        double profitAfterTax = business.calculateTotalProfitAfterTax();
+        double profit = business.calculateTotalProfit();
         double margin = business.calculateOverallMargin();
 
-        printReportCard("ALL-TIME REPORT", "All Time", count, revenue, expenses, profitBeforeTax, profitAfterTax, margin);
+        printReportCard("ALL-TIME REPORT", "All Time", count, revenue, expenses, profit, margin);
         waitForEnter();
     }
 
@@ -498,11 +658,10 @@ public class MainSystem {
             int transactionCount,
             double revenue,
             double expenses,
-            double profitBeforeTax,
-            double profitAfterTax,
+            double profit,
             double margin) {
         double avgRevenuePerTransaction = transactionCount == 0 ? 0 : revenue / transactionCount;
-        double avgProfitPerTransaction = transactionCount == 0 ? 0 : profitBeforeTax / transactionCount;
+        double avgProfitPerTransaction = transactionCount == 0 ? 0 : profit / transactionCount;
 
         System.out.println("\n========================================");
         System.out.println(title);
@@ -511,18 +670,16 @@ public class MainSystem {
         System.out.printf("%-28s %10d%n", "Transactions", transactionCount);
         System.out.printf("%-28s $%,10.2f%n", "Gross Revenue", revenue);
         System.out.printf("%-28s $%,10.2f%n", "Total Expenses", expenses);
-        System.out.printf("%-28s $%,10.2f%n", "Gross Profit (Before Tax)", profitBeforeTax);
-        System.out.printf("%-28s $%,10.2f%n", "Net Profit (After Tax)", profitAfterTax);
-        System.out.printf("%-28s %10.2f%%%n", "Profit Margin", margin);
+        System.out.printf("%-28s $%,10.2f%n", "Profit", profit);
+        System.out.printf("%-28s %s%n", "Profit Margin", PERCENT_FORMATTER.format(margin));
         System.out.printf("%-28s $%,10.2f%n", "Avg Revenue / Transaction", avgRevenuePerTransaction);
         System.out.printf("%-28s $%,10.2f%n", "Avg Profit / Transaction", avgProfitPerTransaction);
         System.out.println("----------------------------------------");
-        System.out.printf("Applied Tax Rate: %.2f%%%n", Transaction.getTaxRate() * 100);
     }
 
     private static void manageUsers() {
         if (!loggedInUser.can("MANAGE_USERS")) {
-            System.out.println("Sorry, " + loggedInUser.getPosition() + " cannot manage users.");
+            System.out.println("Sorry, " + getStaffPosition(loggedInUser) + " cannot manage users.");
             waitForEnter();
             return;
         }
@@ -560,10 +717,13 @@ public class MainSystem {
         System.out.println("\n--- Add User ---");
         System.out.println("1. Manager");
         System.out.println("2. Cashier");
+        System.out.println("0. Back");
         int roleChoice = getIntInput("Choose role: ");
 
         String role;
-        if (roleChoice == 1) {
+        if (roleChoice == 0) {
+            return;
+        } else if (roleChoice == 1) {
             role = "Manager";
         } else if (roleChoice == 2) {
             role = "Cashier";
@@ -582,32 +742,35 @@ public class MainSystem {
         String password = scanner.nextLine();
         double salary = getNonNegativeDoubleInput("Salary: $");
 
-        IStaff created = business.createStaff(role, fullName, phone, username, password, salary);
+        Staff created = business.createStaff(role, fullName, phone, username, password, salary);
         if (created == null) {
             System.out.println("Could not create user. Check data and ensure username is unique.");
         } else {
-            System.out.println("User created successfully: " + created.getUsername() + " (" + created.getPosition() + ")");
+            System.out.println("User created successfully: " + created.getUsername() + " (" + getStaffPosition(created) + ")");
         }
     }
 
     private static void removeUser() {
         System.out.println("\n--- Remove User ---");
         printUsersTable();
-        System.out.print("Enter username to remove: ");
+        System.out.print("Enter username to remove (or 0 to go back): ");
         String username = scanner.nextLine();
+        if ("0".equals(username)) {
+            return;
+        }
 
         if (loggedInUser.getUsername().equals(username)) {
             System.out.println("You cannot remove your own account while logged in.");
             return;
         }
 
-        IStaff target = business.findStaffByUsername(username);
+        Staff target = business.findStaffByUsername(username);
         if (target == null) {
             System.out.println("User not found.");
             return;
         }
 
-        if ("Manager".equalsIgnoreCase(target.getPosition()) && business.getManagerCount() <= 1) {
+        if ("Manager".equalsIgnoreCase(getStaffPosition(target)) && business.getManagerCount() <= 1) {
             System.out.println("Cannot remove the last manager.");
             return;
         }
@@ -621,20 +784,20 @@ public class MainSystem {
     }
 
     private static void printUsersTable() {
-        ArrayList<IStaff> users = business.getStaffMembers();
+        ArrayList<Staff> users = business.getStaffMembers();
         System.out.println();
         System.out.printf("%-4s %-12s %-20s %-15s %-10s %-14s %-8s%n",
                 "No", "ID", "Full Name", "Username", "Role", "Phone", "Status");
         System.out.println("--------------------------------------------------------------------------------");
 
         for (int i = 0; i < users.size(); i++) {
-            IStaff user = users.get(i);
+            Staff user = users.get(i);
             System.out.printf("%-4d %-12s %-20s %-15s %-10s %-14s %-8s%n",
                     i + 1,
                     user.getStaffId(),
                     user.getFullName(),
                     user.getUsername(),
-                    user.getPosition(),
+                    getStaffPosition(user),
                     user.getPhone(),
                     user.isActive() ? "Active" : "Inactive");
         }
@@ -674,6 +837,23 @@ public class MainSystem {
                 System.out.println("Value cannot be negative.");
             } catch (NumberFormatException ex) {
                 System.out.println("Please enter a valid number.");
+            }
+        }
+    }
+
+    private static String promptDate(String prompt) {
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE;
+        while (true) {
+            System.out.print(prompt);
+            String input = scanner.nextLine().trim();
+            if ("0".equals(input)) {
+                return null;
+            }
+            try {
+                LocalDate parsed = LocalDate.parse(input, formatter);
+                return parsed.toString();
+            } catch (DateTimeParseException ex) {
+                System.out.println("Invalid date format. Please use YYYY-MM-DD.");
             }
         }
     }

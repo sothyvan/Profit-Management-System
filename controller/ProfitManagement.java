@@ -7,18 +7,17 @@ import other.Customer;
 import other.Product;
 import other.Transaction;
 import user.CashierStaff;
-import user.IStaff;
 import user.ManagerStaff;
 import user.Staff;
 
 public class ProfitManagement {
-    private ArrayList<IStaff> staffMembers;
+    private ArrayList<Staff> staff;
     private ArrayList<Customer> customers;
     private ArrayList<Product> products;
     private ArrayList<Transaction> transactions;
     
     public ProfitManagement() {
-        staffMembers = new ArrayList<>();
+        staff = new ArrayList<>();
         customers = new ArrayList<>();
         products = new ArrayList<>();
         transactions = new ArrayList<>();
@@ -26,7 +25,7 @@ public class ProfitManagement {
     
     // ========== GETTERS ==========
     public int getStaffCount() {
-        return staffMembers.size();
+        return staff.size();
     }
 
     public int getCustomerCount() {
@@ -45,8 +44,28 @@ public class ProfitManagement {
         return new ArrayList<>(customers);
     }
     
-    public ArrayList<IStaff> getStaffMembers() {
-        return new ArrayList<>(staffMembers);
+    public ArrayList<Staff> getStaffMembers() {
+        return new ArrayList<>(staff);
+    }
+
+    public ArrayList<Staff> getCashiers() {
+        ArrayList<Staff> result = new ArrayList<>();
+        for (Staff s : staff) {
+            if (s instanceof CashierStaff) {
+                result.add(s);
+            }
+        }
+        return result;
+    }
+    
+    public ArrayList<Staff> getManagers() {
+        ArrayList<Staff> result = new ArrayList<>();
+        for (Staff s : staff) {
+            if (s instanceof ManagerStaff) {
+                result.add(s);
+            }
+        }
+        return result;
     }
 
     public ArrayList<Product> getProducts() {
@@ -58,28 +77,28 @@ public class ProfitManagement {
     }
 
     // ========== STAFF METHODS ==========
-    public void addStaff(IStaff staff) {
-        if (staff != null) {
-            staffMembers.add(staff);
+    public void addStaff(Staff staffMember) {
+        if (staffMember != null) {
+            staff.add(staffMember);
         }
     }
 
-    public IStaff authenticate(String username, String password) {
-        for (IStaff staff : staffMembers) {
-            if (staff.getUsername().equals(username) && staff.checkPassword(password) && staff.isActive()) {
-                return staff;
+    public Staff authenticate(String username, String password) {
+        for (Staff s : staff) {
+            if (s.getUsername().equals(username) && s.checkPassword(password) && s.isActive()) {
+                return s;
             }
         }
         return null;
     }
 
-    public IStaff findStaffByUsername(String username) {
+    public Staff findStaffByUsername(String username) {
         if (isNullOrBlank(username)) {
             return null;
         }
-        for (IStaff staff : staffMembers) {
-            if (staff.getUsername().equals(username.trim())) {
-                return staff;
+        for (Staff s : staff) {
+            if (s.getUsername().equals(username.trim())) {
+                return s;
             }
         }
         return null;
@@ -87,15 +106,25 @@ public class ProfitManagement {
 
     public int getManagerCount() {
         int count = 0;
-        for (IStaff staff : staffMembers) {
-            if ("Manager".equalsIgnoreCase(staff.getPosition())) {
+        for (Staff s : staff) {
+            if (s instanceof ManagerStaff) {
+                count++;
+            }
+        }
+        return count;
+    }
+    
+    public int getCashierCount() {
+        int count = 0;
+        for (Staff s : staff) {
+            if (s instanceof CashierStaff) {
                 count++;
             }
         }
         return count;
     }
 
-    public IStaff createStaff(String role, String fullName, String phone, String username, String password, double salary) {
+    public Staff createStaff(String role, String fullName, String phone, String username, String password, double salary) {
         if (isNullOrBlank(role) || isNullOrBlank(fullName) || isNullOrBlank(phone)
                 || isNullOrBlank(username) || isNullOrBlank(password) || salary < 0) {
             return null;
@@ -104,29 +133,40 @@ public class ProfitManagement {
             return null;
         }
 
-        Staff staffProfile = new Staff(fullName.trim(), phone.trim(), username.trim(), password, "STAFF");
-        IStaff staff;
-        if ("manager".equalsIgnoreCase(role.trim())) {
-            staff = new ManagerStaff(staffProfile, salary);
-        } else if ("cashier".equalsIgnoreCase(role.trim())) {
-            staff = new CashierStaff(staffProfile, salary);
+        String normalizedRole = role.trim().toLowerCase();
+        Staff staffProfile = new Staff(fullName.trim(), phone.trim(), username.trim(), password) {
+            @Override
+            public void setSalary(double salary) {
+                this.salary = salary;
+            }
+
+            @Override
+            public boolean can(String action) {
+                return false;
+            }
+        };
+        Staff createdStaff;
+        if ("manager".equals(normalizedRole)) {
+            createdStaff = new ManagerStaff(staffProfile, salary);
+        } else if ("cashier".equals(normalizedRole)) {
+            createdStaff = new CashierStaff(staffProfile, salary);
         } else {
             return null;
         }
 
-        addStaff(staff);
-        return staff;
+        addStaff(createdStaff);
+        return createdStaff;
     }
 
     public boolean removeStaffByUsername(String username) {
-        IStaff target = findStaffByUsername(username);
+        Staff target = findStaffByUsername(username);
         if (target == null) {
             return false;
         }
-        if ("Manager".equalsIgnoreCase(target.getPosition()) && getManagerCount() <= 1) {
+        if (target instanceof ManagerStaff && getManagerCount() <= 1) {
             return false;
         }
-        return staffMembers.remove(target);
+        return staff.remove(target);
     }
     
     // ========== ADD METHODS ==========
@@ -172,7 +212,7 @@ public class ProfitManagement {
         return createProduct(name, Product.DEFAULT_UNIT, price, productionCost);
     }
 
-    public Transaction createTransaction(String date, String customerId, IStaff staff) {
+    public Transaction createTransaction(String date, String customerId, Staff staff) {
         Customer customer = findCustomerById(customerId);
         if (customer == null || isNullOrBlank(date)) {
             return null;
@@ -210,7 +250,7 @@ public class ProfitManagement {
             }
         }
 
-        Cost cost = new Cost(amount, description, relatedProduct, transaction);
+        Cost cost = new Cost(amount, description, relatedProduct);
         transaction.addCost(cost);
         return cost;
     }
@@ -370,10 +410,6 @@ public class ProfitManagement {
         return getDailyRevenue(date) - getDailyExpenses(date);
     }
     
-    public double getDailyProfitAfterTax(String date) {
-        return getDailyProfit(date) * (1 - Transaction.getTaxRate());
-    }
-    
     public double getDailyMargin(String date) {
         double revenue = getDailyRevenue(date);
         double profit = getDailyProfit(date);
@@ -417,10 +453,6 @@ public class ProfitManagement {
     
     public double getMonthlyProfit(String yearMonth) {
         return getMonthlyRevenue(yearMonth) - getMonthlyExpenses(yearMonth);
-    }
-    
-    public double getMonthlyProfitAfterTax(String yearMonth) {
-        return getMonthlyProfit(yearMonth) * (1 - Transaction.getTaxRate());
     }
     
     public double getMonthlyMargin(String yearMonth) {
@@ -468,10 +500,6 @@ public class ProfitManagement {
         return getYearlyRevenue(year) - getYearlyExpenses(year);
     }
     
-    public double getYearlyProfitAfterTax(String year) {
-        return getYearlyProfit(year) * (1 - Transaction.getTaxRate());
-    }
-    
     public double getYearlyMargin(String year) {
         double revenue = getYearlyRevenue(year);
         double profit = getYearlyProfit(year);
@@ -511,10 +539,6 @@ public class ProfitManagement {
         return calculateTotalRevenue() - calculateTotalExpenses();
     }
     
-    public double calculateTotalProfitAfterTax() {
-        return calculateTotalProfit() * (1 - Transaction.getTaxRate());
-    }
-    
     public double calculateOverallMargin() {
         double totalRevenue = calculateTotalRevenue();
         double totalProfit = calculateTotalProfit();
@@ -524,18 +548,18 @@ public class ProfitManagement {
     
     // ========== UTILITY METHODS ==========
     public void clearAllData() {
-        staffMembers.clear();
+        staff.clear();
         customers.clear();
         products.clear();
         transactions.clear();
     }
 
     public void loadDefaultUsers() {
-        if (!staffMembers.isEmpty()) {
+        if (!staff.isEmpty()) {
             return;
         }
         createStaff("Manager", "Taing Sothyvan", "098765432", "Sothyvan", "Van1234", 2500);
-        createStaff("Cashier", "Eng Vathana", "012345678", "Vathana", "Vathana123", 1200);
+        createStaff("Cashier", "Eng Vathana", "012345678", "Vathana", "Vathana123", 699);
     }
 
     public void loadSampleData() {
@@ -543,30 +567,44 @@ public class ProfitManagement {
             return;
         }
 
-        Customer cust1 = createCustomer("Sothyvan", "Taing", "8551001");
+        Customer cust1 = createCustomer("Ah", "Poy", "8551001");
         Customer cust2 = createCustomer("Socheat", "Hem Eam", "8551002");
         Customer cust3 = createCustomer("Rithybot", "Samnang", "8551003");
+        Customer cust4 = createCustomer("James", "Bond", "8551004");
 
         Product prod1 = createProduct("Apples", 4.0, 2.5);
         Product prod2 = createProduct("Shoes", 120.0, 50.0);
         Product prod3 = createProduct("Software", 299.0, 30.0);
+        Product prod4 = createProduct("Shirt", 20.0, 15.0);
+        Product prod5 = createProduct("Cement", 25,20);
+        Product prod6 = createProduct("Steel", 40,25);
+        Product prod7 = createProduct("Solar Panel", 60,45);
 
-        IStaff defaultStaff = staffMembers.isEmpty() ? null : staffMembers.get(0);
+        Staff defaultStaff = staff.isEmpty() ? null : staff.get(0);
 
-        Transaction tx1 = new Transaction("2024-01-10", cust1, defaultStaff, prod1, 100);
-        tx1.addCost(new Cost(50.0, "Shipping", null, tx1));
+        Transaction tx1 = new Transaction("2025-03-13", cust1, defaultStaff, prod1, 100);
+        tx1.addCost(new Cost(50.0, "Shipping", null));
 
-        Transaction tx2 = new Transaction("2024-01-12", cust3, defaultStaff);
+        Transaction tx2 = new Transaction("2025-03-14", cust3, defaultStaff);
         tx2.addProduct(prod2, 40);
         tx2.addProduct(prod1, 20);
-        tx2.addCost(new Cost(20.0, "Packaging", null, tx2));
+        tx2.addCost(new Cost(20.0, "Packaging", null));
 
-        Transaction tx3 = new Transaction("2024-01-15", cust2, defaultStaff, prod3, 10);
-        tx3.addCost(new Cost(100.0, "License Fee", prod3, tx3));
+        Transaction tx3 = new Transaction("2026-03-15", cust2, defaultStaff, prod3, 10);
+        tx3.addCost(new Cost(100.0, "License Fee", prod3));
+        
+        Transaction tx4 = new Transaction("2026-03-16", cust4, defaultStaff, prod4, 1000);
+        tx4.addProduct(prod5, 200);
+        
+        Transaction tx5 = new Transaction( "2026-03-17", cust1, defaultStaff, prod7 ,450);
+        tx5.addProduct(prod6, 300);
+        tx5.addCost(new Cost(250, "installation", null));
 
         addTransaction(tx1);
         addTransaction(tx2);
         addTransaction(tx3);
+        addTransaction(tx4);
+        addTransaction(tx5);
     }
 
     private boolean isNullOrBlank(String value) {
@@ -575,7 +613,7 @@ public class ProfitManagement {
     
     @Override
     public String toString() {
-        return "BusinessDatabase [staffMembers=" + staffMembers +
+        return "ProfitManagement [staff=" + staff +
                 ", customers=" + customers + 
                 ", products=" + products + 
                 ", transactions=" + transactions + "]";

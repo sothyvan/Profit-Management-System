@@ -1,5 +1,7 @@
+// user/Staff.java
 package user;
-public class Staff implements IStaff {
+
+public abstract class Staff implements IStaff {
     private static int nextId = 1;
 
     private String staffId;
@@ -8,14 +10,14 @@ public class Staff implements IStaff {
     private String username;
     private String password;
     private boolean active;
+    protected double salary;
 
-    public Staff(
+    protected Staff(
             String fullName,
             String phone,
             String username,
-            String password,
-            String idPrefix) {
-        this.staffId = idPrefix + "-" + nextId;
+            String password) {
+        this.staffId = String.valueOf(nextId);
         nextId++;
         setFullName(fullName);
         setPhone(phone);
@@ -24,15 +26,23 @@ public class Staff implements IStaff {
         this.active = true;
     }
 
-    public Staff(Staff source, String idPrefix) {
-        this(
-                source != null ? source.getFullName() : null,
-                source != null ? source.getPhone() : null,
-                source != null ? source.getUsername() : null,
-                source != null ? source.password : null,
-                idPrefix);
-        if (source != null) {
+    protected Staff(Staff source) {
+        if (source == null) {
+            this.staffId = String.valueOf(nextId);
+            nextId++;
+            setFullName(null);
+            setPhone(null);
+            setUsername(null);
+            setPassword(null);
+            this.active = true;
+        } else {
+            this.staffId = source.getStaffId();
+            setFullName(source.getFullName());
+            setPhone(source.getPhone());
+            setUsername(source.getUsername());
+            setPassword(source.password);
             this.active = source.isActive();
+            this.salary = source.getSalary();
         }
     }
 
@@ -54,11 +64,6 @@ public class Staff implements IStaff {
     @Override
     public String getUsername() {
         return username;
-    }
-
-    @Override
-    public String getPosition(){
-        return "Staff";
     }
 
     @Override
@@ -109,26 +114,30 @@ public class Staff implements IStaff {
         this.active = active;
     }
 
+    public double getSalary() {
+        return salary;
+    }
+
+    public abstract void setSalary(double salary);
+
     private boolean isBlank(String s) {
         return s == null || s.trim().isEmpty();
     }
 
     private boolean isDigits(String s) {
-        if (isBlank(s)) {
-            return false;
-        }
+        if (isBlank(s)) return false;
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
-            if (c < '0' || c > '9') {
-                return false;
-            }
+            if (c < '0' || c > '9') return false;
         }
         return true;
     }
 
     @Override
+    public abstract boolean can(String action);
+    
     public String toString() {
-        return "Staff{" +
+        return getClass().getSimpleName() + "{" +
                 "staffId='" + staffId + '\'' +
                 ", fullName='" + fullName + '\'' +
                 ", phone='" + phone + '\'' +
@@ -139,23 +148,10 @@ public class Staff implements IStaff {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
         Staff other = (Staff) obj;
-        if (staffId == null) {
-            if (other.staffId != null)
-                return false;
-        } else if (!staffId.equals(other.staffId))
-            return false;
-        return true;
-    }
-
-    @Override
-    public boolean can(String action) {
-        return false; 
+        if (staffId == null) return other.staffId == null;
+        return staffId.equals(other.staffId);
     }
 }

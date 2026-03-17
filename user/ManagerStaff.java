@@ -1,10 +1,10 @@
+// user/ManagerStaff.java
 package user;
+
 public class ManagerStaff extends Staff {
 
-    private double salary;
-
     public ManagerStaff(Staff staff, double salary) {
-        super(staff, "MANAGER");
+        super(staff);
         setSalary(salary);
     }
 
@@ -12,45 +12,30 @@ public class ManagerStaff extends Staff {
         return salary;
     }
 
+    @Override
     public void setSalary(double salary) {
-        if(salary < 1000)
-        {
-            System.out.println("error: need more salary");
-        }else
-        {
+        if (salary < 1000) {
+            System.out.println("Error: salary too low!");
+        } else {
             this.salary = salary;
         }
     }
 
     @Override
     public boolean can(String action) {
-        return true;
+        return action != null;
     }
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof ManagerStaff)) return false;
         ManagerStaff other = (ManagerStaff) obj;
-
-        if (!super.equals(obj))
-        {
-            return false;
-        }else{
-            if (salary != other.salary){
-                return false;
-            }
-        }
-        return true;
+        return super.equals(other) && Double.compare(salary, other.salary) == 0;
     }
-
-        // ManagerStaff.java
-    @Override
-    public String getPosition() {
-        return "Manager";
-    }
-
 
     @Override
     public String toString() {
-        return super.toString()+"ManagerStaff [\"Position: Manager salary=" + salary + "]";
+        return super.toString() + ", salary=" + salary;
     }
 }

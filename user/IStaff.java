@@ -5,7 +5,6 @@ public interface IStaff {
     String getFullName();
     String getPhone();
     String getUsername();
-    String getPosition();
     
     boolean isActive();
     boolean checkPassword(String input);

@@ -9,23 +9,23 @@ public class Cost {
     private Product product;        
     private Transaction transaction;
     
-    // Constructor for Product-related costs
-    public Cost(double amount, Product product) {
-        this(amount, "Product Cost", product, null);
-    }
-    
-    // Constructor for Transaction-related costs
-    public Cost(double amount, Transaction transaction) {
-        this(amount, "Transaction Cost", null, transaction);
-    }
-
-    public Cost(double amount, String description, Product product, Transaction transaction) {
-        this.id = "COST-" + nextId;
+    public Cost(double amount, String description, Product product) {
+        this.id = String.valueOf(nextId);
         nextId++;
         setAmount(amount);
         setDescription(description);
         this.product = product;
-        this.transaction = transaction;
+        this.transaction = null;
+    }
+    
+    // Constructor for Product-related costs
+    public Cost(double amount, Product product) {
+        this(amount, "Product Cost", product);
+    }
+    
+    // Constructor for Transaction-related costs
+    public Cost(double amount, String description) {
+        this(amount, description, null);
     }
     
     // GETTERS

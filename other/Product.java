@@ -1,4 +1,5 @@
 package other;
+
 public class Product {
     public static final String DEFAULT_UNIT = "case";
 
@@ -11,7 +12,7 @@ public class Product {
     
     // Constructor with auto-generated ID
     public Product(String name, String unit, double price) {
-        this.id = "PROD-" + nextId;
+        this.id = String.valueOf(nextId);
         nextId++;
         this.name = name;
         this.unit = DEFAULT_UNIT;
