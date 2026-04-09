@@ -107,14 +107,18 @@ public class UserPanel extends JPanel {
             String role = InputValidator.normalizeRole(roleField.getText());
             String fullName = InputValidator.requireLetters(fullNameField.getText(), "Full name");
             String phone = InputValidator.requireDigits(phoneField.getText(), "Phone", 8, 15);
-            String username = InputValidator.requireUsername(usernameField.getText(), "Username");
+            String username = InputValidator.requireText(usernameField.getText(), "Username");
             String password = InputValidator.requireText(passwordField.getText(), "Password");
             double salary = InputValidator.parseNonNegativeDouble(salaryField.getText(), "Salary");
             InputValidator.validateSalaryForRole(role, salary);
 
+            if (business.findStaffByUsername(username) != null) {
+                showError("Username already exists.");
+                return;
+            }
             Staff created = business.createStaff(role, fullName, phone, username, password, salary);
             if (created == null) {
-                showError("Could not create user. Check input or duplicate username.");
+                showError("Failed to create user. Please check the input values.");
                 return;
             }
             clearAddForm();
@@ -140,9 +144,13 @@ public class UserPanel extends JPanel {
             showError("You cannot remove your own account while logged in.");
             return;
         }
+        if (business.findStaffByUsername(username.trim()) == null) {
+            showError("User not found.");
+            return;
+        }
         boolean removed = business.removeStaffByUsername(username.trim());
         if (!removed) {
-            showError("Could not remove user. Check username or manager count.");
+            showError("Cannot remove user. You may be trying to remove the last manager.");
             return;
         }
         removeUsernameField.setText("");

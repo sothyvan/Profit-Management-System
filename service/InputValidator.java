@@ -41,17 +41,6 @@ public class InputValidator {
         return v;
     }
 
-    public static String requireUsername(String value, String field) throws ValidationException {
-        String v = requireText(value, field);
-        for (int i = 0; i < v.length(); i++) {
-            char c = v.charAt(i);
-            if (!Character.isLetterOrDigit(c)) {
-                throw new ValidationException(field + " must contain letters and numbers only.");
-            }
-        }
-        return v;
-    }
-
     public static double parsePositiveDouble(String value, String field) throws ValidationException {
         double num = parseDouble(value, field);
         if (num <= 0) {

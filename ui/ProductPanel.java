@@ -61,8 +61,7 @@ public class ProductPanel extends JPanel {
             sb.append("No products found.\n");
         } else {
             for (Product p : products) {
-                sb.append("ID: ").append(p.getId())
-                        .append(" | ").append(p.getName())
+                sb.append(p.getRefCode()).append(" | ").append(p.getName())
                         .append(" | Price: $").append(p.getPrice())
                         .append(" | Unit: ").append(p.getUnit())
                         .append(" | Cost: $").append(p.getProductionCost())
@@ -84,7 +83,7 @@ public class ProductPanel extends JPanel {
 
             Product product = business.createProduct(name, price, cost);
             if (product == null) {
-                showError("Could not create product. Check your input.");
+                showError("Product not created. Name is required, price > 0, cost >= 0.");
                 return;
             }
             clearForm();

@@ -7,6 +7,8 @@ public class Customer {
     private String phoneNumber;
     private static int nextId = 1;  
     private String id;              
+    private final String refCode;
+    private static int nextRef = 1;
     
     public Customer(String firstName, String lastName, String phoneNumber) {
         this.firstName = firstName;
@@ -15,6 +17,8 @@ public class Customer {
         this.phoneNumber = phoneNumber;
         this.id = String.valueOf(nextId);
         nextId++;
+        this.refCode = formatRef(nextRef);
+        nextRef++;
     }
 
     //Getter methods
@@ -38,6 +42,10 @@ public class Customer {
         return id;
     }
 
+    public String getRefCode() {
+        return refCode;
+    }
+
     //Setter methods
     public void setFirstName(String firstName) {
         this.firstName = firstName;
@@ -53,7 +61,7 @@ public class Customer {
     
     @Override
     public String toString() {
-        return "Customer [id = " + id + ", firstName = " + firstName + 
+        return "Customer [ref = " + refCode + ", id = " + id + ", firstName = " + firstName + 
                 ", lastName = " + lastName + ", phoneNumber = " + phoneNumber + "]";
     }
 
@@ -72,5 +80,9 @@ public class Customer {
         } else if (!id.equals(other.id))
             return false;
         return true;
+    }
+
+    private String formatRef(int value) {
+        return String.format("C-%04d", value);
     }
 }

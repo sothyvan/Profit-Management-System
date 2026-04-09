@@ -4,16 +4,20 @@ public class Product {
     public static final String DEFAULT_UNIT = "case";
 
     private String id;       
+    private final String refCode;
     private String name;
     private String unit;
     private double price;
     private Cost productionCosts;
     private static int nextId = 1;  
+    private static int nextRef = 1;
     
     // Constructor with auto-generated ID
     public Product(String name, String unit, double price) {
         this.id = String.valueOf(nextId);
         nextId++;
+        this.refCode = formatRef(nextRef);
+        nextRef++;
         this.name = name;
         this.unit = DEFAULT_UNIT;
         this.price = price;
@@ -23,6 +27,10 @@ public class Product {
     // GETTERS
     public String getId() {
         return id;
+    }
+
+    public String getRefCode() {
+        return refCode;
     }
     
     public String getName() {
@@ -89,10 +97,14 @@ public class Product {
     
     @Override
     public String toString() {
-        return "Product [id = " + id + 
+        return "Product [ref = " + refCode + ", id = " + id + 
                 ", name = " + name + 
                 ", unit = " + unit + 
                 ", price = $" + price + 
                 ", productionCosts = $" + getProductionCost() + "]";
+    }
+
+    private String formatRef(int value) {
+        return String.format("P-%04d", value);
     }
 }

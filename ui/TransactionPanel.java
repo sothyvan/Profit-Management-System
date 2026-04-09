@@ -10,8 +10,12 @@ import service.InputValidator;
 import user.Staff;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Supplier;
 
 public class TransactionPanel extends JPanel {
     private final MainSystemGUI app;
@@ -19,18 +23,23 @@ public class TransactionPanel extends JPanel {
     private final JTextArea output = new JTextArea(18, 60);
 
     private final JTextField dateField = new JTextField();
-    private final JTextField customerIdField = new JTextField();
+    private final JComboBox<ComboItem<Customer>> customerCombo = new JComboBox<>();
 
-    private final JTextField addTxIdField = new JTextField();
-    private final JTextField productIdField = new JTextField();
+    private final JComboBox<ComboItem<Transaction>> txForProductCombo = new JComboBox<>();
+    private final JComboBox<ComboItem<Product>> productCombo = new JComboBox<>();
     private final JTextField quantityField = new JTextField();
 
-    private final JTextField costTxIdField = new JTextField();
+    private final JComboBox<ComboItem<Transaction>> txForCostCombo = new JComboBox<>();
     private final JTextField costAmountField = new JTextField();
     private final JTextField costDescField = new JTextField();
-    private final JTextField costProductIdField = new JTextField();
+    private final JComboBox<ComboItem<Product>> costProductCombo = new JComboBox<>();
 
-    private final JTextField viewTxIdField = new JTextField();
+    private final JComboBox<ComboItem<Transaction>> txForViewCombo = new JComboBox<>();
+
+    private ArrayList<ComboItem<Customer>> customerItems = new ArrayList<>();
+    private ArrayList<ComboItem<Product>> productItems = new ArrayList<>();
+    private ArrayList<ComboItem<Transaction>> transactionItems = new ArrayList<>();
+    private boolean updatingCombo = false;
 
     public TransactionPanel(MainSystemGUI app, ProfitManagement business) {
         this.app = app;
@@ -51,21 +60,29 @@ public class TransactionPanel extends JPanel {
         add(forms, BorderLayout.NORTH);
         add(new JScrollPane(output), BorderLayout.CENTER);
         add(buildBottomPanel(), BorderLayout.SOUTH);
+
+        installFilter(customerCombo, () -> customerItems);
+        installFilter(productCombo, () -> productItems);
+        installFilter(costProductCombo, this::buildCostProductItems);
+        installFilter(txForProductCombo, () -> transactionItems);
+        installFilter(txForCostCombo, () -> transactionItems);
+        installFilter(txForViewCombo, () -> transactionItems);
     }
 
     public void refresh() {
+        loadComboData();
         listTransactions();
     }
 
     private JPanel buildCreatePanel() {
-        JPanel panel = new JPanel(new GridLayout(3, 2, 0, 0));
+        JPanel panel = new JPanel(new GridLayout(3, 2, 6, 6));
         panel.setBorder(BorderFactory.createTitledBorder("Create Transaction"));
         JButton createButton = new JButton("Create");
 
         panel.add(new JLabel("Date (YYYY-MM-DD):"));
         panel.add(dateField);
-        panel.add(new JLabel("Customer ID:"));
-        panel.add(customerIdField);
+        panel.add(new JLabel("Customer:"));
+        panel.add(customerCombo);
         panel.add(new JLabel());
         panel.add(createButton);
 
@@ -78,10 +95,10 @@ public class TransactionPanel extends JPanel {
         panel.setBorder(BorderFactory.createTitledBorder("Add Product to Transaction"));
         JButton addButton = new JButton("Add Product");
 
-        panel.add(new JLabel("Transaction ID:"));
-        panel.add(addTxIdField);
-        panel.add(new JLabel("Product ID:"));
-        panel.add(productIdField);
+        panel.add(new JLabel("Transaction:"));
+        panel.add(txForProductCombo);
+        panel.add(new JLabel("Product:"));
+        panel.add(productCombo);
         panel.add(new JLabel("Quantity:"));
         panel.add(quantityField);
         panel.add(new JLabel());
@@ -96,14 +113,14 @@ public class TransactionPanel extends JPanel {
         panel.setBorder(BorderFactory.createTitledBorder("Add Expense to Transaction"));
         JButton addCostButton = new JButton("Add Expense");
 
-        panel.add(new JLabel("Transaction ID:"));
-        panel.add(costTxIdField);
+        panel.add(new JLabel("Transaction:"));
+        panel.add(txForCostCombo);
         panel.add(new JLabel("Amount:"));
         panel.add(costAmountField);
         panel.add(new JLabel("Description:"));
         panel.add(costDescField);
-        panel.add(new JLabel("Product ID (optional):"));
-        panel.add(costProductIdField);
+        panel.add(new JLabel("Product (optional):"));
+        panel.add(costProductCombo);
         panel.add(new JLabel());
         panel.add(addCostButton);
 
@@ -116,8 +133,8 @@ public class TransactionPanel extends JPanel {
         panel.setBorder(BorderFactory.createTitledBorder("View Transaction Details"));
         JButton viewButton = new JButton("View Details");
 
-        panel.add(new JLabel("Transaction ID:"));
-        panel.add(viewTxIdField);
+        panel.add(new JLabel("Transaction:"));
+        panel.add(txForViewCombo);
         panel.add(new JLabel());
         panel.add(viewButton);
 
@@ -159,21 +176,21 @@ public class TransactionPanel extends JPanel {
         }
         try {
             String date = InputValidator.parseDate(dateField.getText());
-            String customerId = InputValidator.requireText(customerIdField.getText(), "Customer ID");
-            if (business.findCustomerById(customerId) == null) {
-                showError("Customer not found.");
+            Customer customer = getSelectedCustomer();
+            if (customer == null) {
+                showError("Please select a customer from the list.");
                 return;
             }
             Staff staff = app.getLoggedInUser();
-            Transaction tx = business.createTransaction(date, customerId, staff);
+            Transaction tx = business.createTransaction(date, customer.getId(), staff);
             if (tx == null) {
-                showError("Could not create transaction. Check data.");
+                showError("Failed to create transaction. Please check the date and customer.");
                 return;
             }
             dateField.setText("");
-            customerIdField.setText("");
+            clearComboText(customerCombo);
             refresh();
-            showInfo("Transaction created. ID: " + tx.getId());
+            showInfo("Transaction created. Ref: " + tx.getRefCode());
         } catch (ValidationException ex) {
             showError(ex.getMessage());
         }
@@ -185,17 +202,25 @@ public class TransactionPanel extends JPanel {
             return;
         }
         try {
-            String txId = InputValidator.requireText(addTxIdField.getText(), "Transaction ID");
-            String productId = InputValidator.requireText(productIdField.getText(), "Product ID");
             double quantity = InputValidator.parsePositiveDouble(quantityField.getText(), "Quantity");
 
-            boolean ok = business.addProductToTransaction(txId, productId, quantity);
-            if (!ok) {
-                showError("Unable to add product. Check IDs and quantity.");
+            Transaction tx = getSelectedTransaction(txForProductCombo);
+            if (tx == null) {
+                showError("Please select a transaction from the list.");
                 return;
             }
-            addTxIdField.setText("");
-            productIdField.setText("");
+            Product product = getSelectedProduct();
+            if (product == null) {
+                showError("Please select a product from the list.");
+                return;
+            }
+            boolean ok = business.addProductToTransaction(tx.getId(), product.getId(), quantity);
+            if (!ok) {
+                showError("Failed to add product to transaction.");
+                return;
+            }
+            clearComboText(txForProductCombo);
+            clearComboText(productCombo);
             quantityField.setText("");
             refresh();
             showInfo("Product added to transaction.");
@@ -210,25 +235,29 @@ public class TransactionPanel extends JPanel {
             return;
         }
         try {
-            String txId = InputValidator.requireText(costTxIdField.getText(), "Transaction ID");
             double amount = InputValidator.parsePositiveDouble(costAmountField.getText(), "Amount");
             String desc = InputValidator.requireText(costDescField.getText(), "Description");
-            String productId = costProductIdField.getText();
 
-            Cost cost;
-            if (productId == null || productId.trim().isEmpty()) {
-                cost = business.addTransactionCost(txId, amount, desc);
-            } else {
-                cost = business.addTransactionCost(txId, amount, desc, productId.trim());
-            }
-            if (cost == null) {
-                showError("Could not add expense. Check IDs and amount.");
+            Transaction tx = getSelectedTransaction(txForCostCombo);
+            if (tx == null) {
+                showError("Please select a transaction from the list.");
                 return;
             }
-            costTxIdField.setText("");
+            Cost cost;
+            Product selectedProduct = getSelectedCostProduct();
+            if (selectedProduct == null) {
+                cost = business.addTransactionCost(tx.getId(), amount, desc);
+            } else {
+                cost = business.addTransactionCost(tx.getId(), amount, desc, selectedProduct.getId());
+            }
+            if (cost == null) {
+                showError("Failed to add expense to transaction.");
+                return;
+            }
+            clearComboText(txForCostCombo);
             costAmountField.setText("");
             costDescField.setText("");
-            costProductIdField.setText("");
+            clearComboText(costProductCombo);
             refresh();
             showInfo("Expense added. ID: " + cost.getId());
         } catch (ValidationException ex) {
@@ -241,14 +270,9 @@ public class TransactionPanel extends JPanel {
             showError("You do not have permission to view transactions.");
             return;
         }
-        String txId = viewTxIdField.getText();
-        if (txId == null || txId.trim().isEmpty()) {
-            showError("Transaction ID is required.");
-            return;
-        }
-        Transaction tx = business.findTransactionById(txId.trim());
+        Transaction tx = getSelectedTransaction(txForViewCombo);
         if (tx == null) {
-            showError("Transaction not found.");
+            showError("Please select a transaction from the list.");
             return;
         }
         output.setText(formatTransactionDetails(tx));
@@ -268,7 +292,7 @@ public class TransactionPanel extends JPanel {
         } else {
             for (Transaction tx : transactions) {
                 String staff = (tx.getStaff() == null) ? "Unassigned" : tx.getStaff().getUsername();
-                sb.append("ID: ").append(tx.getId())
+                sb.append("Ref: ").append(tx.getRefCode())
                         .append(" | Date: ").append(tx.getDate())
                         .append(" | Customer: ").append(tx.getCustomer().getName())
                         .append(" | Staff: ").append(staff)
@@ -288,8 +312,7 @@ public class TransactionPanel extends JPanel {
             sb.append("No customers found.\n");
         } else {
             for (Customer c : customers) {
-                sb.append("ID: ").append(c.getId())
-                        .append(" | ").append(c.getName())
+                sb.append("Ref: ").append(c.getRefCode()).append(" | ").append(c.getName())
                         .append(" | Phone: ").append(c.getPhoneNumber())
                         .append("\n");
             }
@@ -306,8 +329,7 @@ public class TransactionPanel extends JPanel {
             sb.append("No products found.\n");
         } else {
             for (Product p : products) {
-                sb.append("ID: ").append(p.getId())
-                        .append(" | ").append(p.getName())
+                sb.append("Ref: ").append(p.getRefCode()).append(" | ").append(p.getName())
                         .append(" | Price: $").append(p.getPrice())
                         .append(" | Unit: ").append(p.getUnit())
                         .append("\n");
@@ -320,7 +342,7 @@ public class TransactionPanel extends JPanel {
         StringBuilder sb = new StringBuilder();
         sb.append("Transaction Details\n");
         sb.append("----------------------------------------\n");
-        sb.append("ID: ").append(tx.getId()).append("\n");
+        sb.append("Ref: ").append(tx.getRefCode()).append("\n");
         sb.append("Date: ").append(tx.getDate()).append("\n");
         sb.append("Customer: ").append(tx.getCustomer().getName()).append("\n");
         sb.append("Staff: ").append(tx.getStaff() == null ? "Unassigned" : tx.getStaff().getUsername()).append("\n\n");
@@ -392,11 +414,183 @@ public class TransactionPanel extends JPanel {
         return app.getLoggedInUser() != null && app.getLoggedInUser().can(action);
     }
 
+    private void loadComboData() {
+        customerItems = buildCustomerItems();
+        productItems = buildProductItems();
+        transactionItems = buildTransactionItems();
+
+        updateComboModel(customerCombo, customerItems, getComboText(customerCombo), false);
+        updateComboModel(productCombo, productItems, getComboText(productCombo), false);
+        updateComboModel(costProductCombo, buildCostProductItems(), getComboText(costProductCombo), false);
+        updateComboModel(txForProductCombo, transactionItems, getComboText(txForProductCombo), false);
+        updateComboModel(txForCostCombo, transactionItems, getComboText(txForCostCombo), false);
+        updateComboModel(txForViewCombo, transactionItems, getComboText(txForViewCombo), false);
+    }
+
+    private ArrayList<ComboItem<Customer>> buildCustomerItems() {
+        ArrayList<ComboItem<Customer>> items = new ArrayList<>();
+        for (Customer c : business.getCustomers()) {
+            items.add(new ComboItem<>(c, c.getRefCode() + " | " + c.getName()));
+        }
+        return items;
+    }
+
+    private ArrayList<ComboItem<Product>> buildProductItems() {
+        ArrayList<ComboItem<Product>> items = new ArrayList<>();
+        for (Product p : business.getProducts()) {
+            items.add(new ComboItem<>(p, p.getRefCode() + " | " + p.getName()));
+        }
+        return items;
+    }
+
+    private ArrayList<ComboItem<Product>> buildCostProductItems() {
+        ArrayList<ComboItem<Product>> items = new ArrayList<>();
+        items.add(new ComboItem<>(null, "(None)"));
+        items.addAll(productItems);
+        return items;
+    }
+
+    private ArrayList<ComboItem<Transaction>> buildTransactionItems() {
+        ArrayList<ComboItem<Transaction>> items = new ArrayList<>();
+        for (Transaction tx : business.getTransactions()) {
+            String label = buildTransactionLabel(tx);
+            items.add(new ComboItem<>(tx, label));
+        }
+        return items;
+    }
+
+    private String buildTransactionLabel(Transaction tx) {
+        double revenue = calculateRevenue(tx);
+        String staffName = tx.getStaff() == null ? "Unassigned" : tx.getStaff().getUsername();
+        return tx.getRefCode() + " | " + tx.getDate() + " | " + tx.getCustomer().getName()
+                + " | Items: " + tx.getProductCount()
+                + " | Rev: $" + String.format("%.2f", revenue)
+                + " | Staff: " + staffName;
+    }
+
+    private <T> void installFilter(JComboBox<ComboItem<T>> combo, Supplier<List<ComboItem<T>>> sourceSupplier) {
+        combo.setEditable(true);
+        JTextField editor = (JTextField) combo.getEditor().getEditorComponent();
+        editor.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                filter();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                filter();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                filter();
+            }
+
+            private void filter() {
+                if (updatingCombo) {
+                    return;
+                }
+                String text = editor.getText();
+                SwingUtilities.invokeLater(() -> {
+                    if (updatingCombo) {
+                        return;
+                    }
+                    updatingCombo = true;
+                    updateComboModel(combo, sourceSupplier.get(), text, true);
+                    updatingCombo = false;
+                });
+            }
+        });
+    }
+
+    private <T> void updateComboModel(JComboBox<ComboItem<T>> combo, List<ComboItem<T>> source, String filter, boolean showPopup) {
+        DefaultComboBoxModel<ComboItem<T>> model = new DefaultComboBoxModel<>();
+        String f = (filter == null) ? "" : filter.trim().toLowerCase();
+        for (ComboItem<T> item : source) {
+            if (f.isEmpty() || item.label.toLowerCase().contains(f)) {
+                model.addElement(item);
+            }
+        }
+        combo.setModel(model);
+        combo.getEditor().setItem(filter == null ? "" : filter);
+        if (showPopup && combo.isShowing() && model.getSize() > 0) {
+            combo.setPopupVisible(true);
+        }
+    }
+
+    private String getComboText(JComboBox<?> combo) {
+        Object item = combo.getEditor().getItem();
+        return item == null ? "" : item.toString();
+    }
+
+    private void clearComboText(JComboBox<?> combo) {
+        combo.getEditor().setItem("");
+    }
+
+    private Customer getSelectedCustomer() {
+        ComboItem<Customer> item = getSelectedItem(customerCombo, customerItems);
+        return item == null ? null : item.value;
+    }
+
+    private Product getSelectedProduct() {
+        ComboItem<Product> item = getSelectedItem(productCombo, productItems);
+        return item == null ? null : item.value;
+    }
+
+    private Transaction getSelectedTransaction(JComboBox<ComboItem<Transaction>> combo) {
+        ComboItem<Transaction> item = getSelectedItem(combo, transactionItems);
+        return item == null ? null : item.value;
+    }
+
+    private Product getSelectedCostProduct() {
+        ComboItem<Product> item = getSelectedItem(costProductCombo, buildCostProductItems());
+        return item == null ? null : item.value;
+    }
+
+    private <T> ComboItem<T> getSelectedItem(JComboBox<ComboItem<T>> combo, List<ComboItem<T>> source) {
+        Object selected = combo.getSelectedItem();
+        if (selected instanceof ComboItem) {
+            return (ComboItem<T>) selected;
+        }
+        Object editorItem = combo.getEditor().getItem();
+        if (editorItem instanceof ComboItem) {
+            return (ComboItem<T>) editorItem;
+        }
+        if (editorItem instanceof String) {
+            String text = ((String) editorItem).trim();
+            if (text.isEmpty()) {
+                return null;
+            }
+            for (ComboItem<T> item : source) {
+                if (item.label.equalsIgnoreCase(text)) {
+                    return item;
+                }
+            }
+        }
+        return null;
+    }
+
     private void showError(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
     private void showInfo(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Info", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private static class ComboItem<T> {
+        private final T value;
+        private final String label;
+
+        private ComboItem(T value, String label) {
+            this.value = value;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
     }
 }

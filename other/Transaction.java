@@ -6,6 +6,7 @@ import user.Staff;
 
 public class Transaction {
     private String id;
+    private final String refCode;
     private String date;
     private Customer customer;
     private Staff staff;
@@ -15,10 +16,13 @@ public class Transaction {
     private Cost[] costs;
     private int costCount;
     private static int nextId = 1;
+    private static int nextRef = 1;
     
     public Transaction(String date, Customer customer, Staff staff, Product product, double quantity) {
         this.id = String.valueOf(nextId);
         nextId++;
+        this.refCode = formatRef(nextRef);
+        nextRef++;
         this.date = date;
         this.customer = customer;
         this.staff = staff;
@@ -35,6 +39,8 @@ public class Transaction {
     public Transaction(String date, Customer customer, Staff staff) {
         this.id = String.valueOf(nextId);
         nextId++;
+        this.refCode = formatRef(nextRef);
+        nextRef++;
         this.date = date;
         this.customer = customer;
         this.staff = staff;
@@ -56,6 +62,10 @@ public class Transaction {
     // ========== GETTERS ==========
     public String getId() {
         return id;
+    }
+
+    public String getRefCode() {
+        return refCode;
     }
     
     public String getDate() {
@@ -156,6 +166,10 @@ public class Transaction {
         }
         costs[costCount] = cost;
         costCount++;
+    }
+
+    private String formatRef(int value) {
+        return String.format("T-%04d", value);
     }
     
     public boolean removeCost(String costId) {

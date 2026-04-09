@@ -62,8 +62,7 @@ public class CustomerPanel extends JPanel {
             sb.append("No customers found.\n");
         } else {
             for (Customer c : customers) {
-                sb.append("ID: ").append(c.getId())
-                        .append(" | ").append(c.getName())
+                sb.append(c.getRefCode()).append(" | ").append(c.getName())
                         .append(" | Phone: ").append(c.getPhoneNumber())
                         .append("\n");
             }
@@ -83,7 +82,7 @@ public class CustomerPanel extends JPanel {
 
             Customer customer = business.createCustomer(first, last, phone);
             if (customer == null) {
-                showError("Could not create customer. Check your input.");
+                showError("Customer not created. Check first/last name and phone format.");
                 return;
             }
             clearForm();
